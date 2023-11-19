@@ -8,14 +8,26 @@ namespace UI.DicePanel
         public string TitleText;
         public string SubTitleText;
         private Dice _dice;
-        public int RollResult;
+
+        public int RollResult
+        {
+            get => _rollResult;
+            set
+            {
+                _rollResult = value < 20 ? value : 19;
+                CheckResult = RollResult >= _currentDifficulty - 1;
+            }
+        }
+
         public bool CheckResult;
         public List<int> AdditiveNumbers;
 
         private int _sides;
         private int _currentDifficulty;
+        private int _rollResult;
 
         public event Action OnStartRolling;
+        public event Action OnFinishCheck;
 
         public CheckSystem(string titleText, string subTitleText, List<int> additiveNumbers, int difficulty)
         {
@@ -42,8 +54,11 @@ namespace UI.DicePanel
         {
             OnStartRolling?.Invoke();
             RollResult = _dice.Roll();
-            CheckResult = RollResult >= _currentDifficulty;
         }
-        
+
+        public void FinishCheck()
+        {
+            OnFinishCheck?.Invoke();
+        }
     }
 }

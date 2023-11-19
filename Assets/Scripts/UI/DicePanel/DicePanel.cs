@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using DG.Tweening;
 using TMPro;
@@ -13,6 +12,7 @@ namespace UI.DicePanel
     public class DicePanel : MonoBehaviour
     {
         [SerializeField] private Canvas dicePanelCanvas;
+        
         [SerializeField] private TMP_Text titlePanel;
         [SerializeField] private TMP_Text subTitlePanel;
         [SerializeField] private TMP_Text resultText;
@@ -20,22 +20,27 @@ namespace UI.DicePanel
         [SerializeField] private TMP_Text difficultyNumberText;
 
         [SerializeField] private Button diceButton;
+        [SerializeField] private Button continueButton;
         [SerializeField] private GameObject finalDice;
         [SerializeField] private GameObject addonsPanel;
-        [SerializeField] private Button continueButton;
 
         [SerializeField] private Sprite[] diceSprites;
         
-        private List<GameObject> _addonElementsPool = new ();
+        private readonly List<GameObject> _addonElementsPool = new ();
+        private int _addonElementsIndex;
+        private Vector3 _diceStarterSize;
         
         // can be injected properly in full game
         private CheckSystem _checkSystem;
+        
         private void Awake()
         {
             foreach (Transform element in addonsPanel.transform)
             {
                 _addonElementsPool.Add(element.gameObject);
             }
+
+            _diceStarterSize = diceButton.transform.localScale;
             
             
             // TODO : Delete. For testing only
@@ -50,25 +55,51 @@ namespace UI.DicePanel
 
         public void Init(string titleText, string subTitleText, List<int> additiveNumbers, int difficulty)
         {
-            _checkSystem.Init(titleText, subTitleText, additiveNumbers, difficulty);
-            difficultyNumberText.text = difficulty.ToString();
+            AddonElementsInit();
+
+            CheckSystemInit(titleText, subTitleText, additiveNumbers, difficulty);
+            DiceButtonInit();
+            
             clickText.gameObject.SetActive(true);
-            titlePanel.text = _checkSystem.TitleText;
-            subTitlePanel.text = _checkSystem.SubTitleText;
-            diceButton.gameObject.SetActive(true);
-            diceButton.interactable = true;
             finalDice.gameObject.SetActive(false);
-            dicePanelCanvas.gameObject.SetActive(true);
             resultText.gameObject.SetActive(false);
             resultText.transform.localScale = Vector3.one * 0.5f;
             
-            diceButton.onClick.AddListener(Roll);
+            dicePanelCanvas.gameObject.SetActive(true);
+            
+            continueButton.onClick.AddListener(OnContinueButtonClicked);
 
             for (int i = 0; i < additiveNumbers.Count; i++)
             {
                 _addonElementsPool[i].gameObject.SetActive(true);
                 _addonElementsPool[i].GetComponentInChildren<TMP_Text>().text = additiveNumbers[i].ToString();
             }
+        }
+
+        private void CheckSystemInit(string titleText, string subTitleText, List<int> additiveNumbers, int difficulty)
+        {
+            _checkSystem.Init(titleText, subTitleText, additiveNumbers, difficulty);
+            difficultyNumberText.text = difficulty.ToString();
+            titlePanel.text = _checkSystem.TitleText;
+            subTitlePanel.text = _checkSystem.SubTitleText;
+        }
+
+        private void AddonElementsInit()
+        {
+            _addonElementsIndex = -1;
+            foreach (var element in _addonElementsPool)
+            {
+                element.transform.localScale = Vector3.one;
+                element.gameObject.SetActive(false);
+            }
+        }
+
+        private void DiceButtonInit()
+        {
+            diceButton.onClick.AddListener(Roll);
+            diceButton.transform.localScale = _diceStarterSize;
+            diceButton.gameObject.SetActive(true);
+            diceButton.interactable = true;
         }
 
         private void Roll()
@@ -90,24 +121,49 @@ namespace UI.DicePanel
 
         private void OnEndRoll()
         {
+            UpdateDice();
+            Debug.Log(_checkSystem.AdditiveNumbers.Count);
+            finalDice.gameObject.SetActive(false);
+            clickText.gameObject.SetActive(false);
+            UpgradesAnimation();
+        }
+
+        private void UpgradesAnimation()
+        {
+            if (_addonElementsPool.Count > 0)
+            {
+                DisableElements();
+            }
+        }
+
+        private void DisableElements()
+        {
+            _addonElementsIndex++;
+            if (_checkSystem.AdditiveNumbers.Count > _addonElementsIndex + 1)
+            {
+                _addonElementsPool[_addonElementsIndex].transform.DOScale(Vector3.zero, 0.5f).SetEase(Ease.InOutBounce).onComplete =
+                    DisableElements;
+                Debug.Log(_addonElementsIndex);
+            }
+            else
+            {
+                Debug.Log(_addonElementsIndex);
+                _addonElementsPool[_addonElementsIndex].transform.DOScale(Vector3.zero, 0.5f).SetEase(Ease.InOutBounce).onComplete = Disable;
+                
+            }
+
+            _checkSystem.RollResult += _checkSystem.AdditiveNumbers[_addonElementsIndex];
+            UpdateDice();
+        }
+
+        private void UpdateDice()
+        {
             diceButton.interactable = false;
             diceButton.gameObject.GetComponent<Image>().sprite = diceSprites[_checkSystem.RollResult];
             diceButton.gameObject.SetActive(true);
-            finalDice.gameObject.SetActive(false);
-            continueButton.gameObject.SetActive(true);
-            clickText.gameObject.SetActive(false);
-            resultText.text = _checkSystem.CheckResult ? "SUCCESS" : "FAILURE";
-            resultText.color = _checkSystem.CheckResult ? Color.green : Color.red;
-            resultText.gameObject.SetActive(true);
-            resultText.transform.DOScale(Vector3.one, 1f).SetEase(Ease.InOutBack);
-            foreach (var element in _addonElementsPool)
-            {
-                element.gameObject.SetActive(false);
-            }
-
-            RemoveListeners();
+            diceButton.transform.DOPunchScale(Vector3.one, 0.5f, 2);
         }
-        
+
         // TODO : FOR TESTING ONLY
         //-----------------------------------------
         private void Update()
@@ -116,7 +172,7 @@ namespace UI.DicePanel
             {
                 var testList = new List<int>();
                 int i = Random.Range(0, 5);
-                while (i != 0 && testList.Count != 8)
+                while (i != 0 && testList.Count != 4)
                 {
                     testList.Add(i);
                     i = Random.Range(0, 5);
@@ -129,12 +185,24 @@ namespace UI.DicePanel
         private void RemoveListeners()
         {
             diceButton.onClick.RemoveListener(Roll);
+            continueButton.onClick.RemoveListener(OnContinueButtonClicked);
+        }
+
+        private void OnContinueButtonClicked()
+        {
+            dicePanelCanvas.gameObject.SetActive(false);
+            _checkSystem.FinishCheck();
         }
 
         private void Disable()
         {
+            resultText.text = _checkSystem.CheckResult ? "SUCCESS" : "FAILURE";
+            resultText.color = _checkSystem.CheckResult ? Color.green : Color.red;
+            resultText.gameObject.SetActive(true);
+            resultText.transform.DOScale(Vector3.one, 1f).SetEase(Ease.InOutBack);
+            continueButton.gameObject.SetActive(true);
             RemoveListeners();
-            dicePanelCanvas.gameObject.SetActive(false);
         }
+
     }
 }
