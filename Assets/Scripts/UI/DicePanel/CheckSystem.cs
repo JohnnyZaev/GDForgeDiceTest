@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 namespace UI.DicePanel
 {
+    /// <summary>
+    /// System for dice check mechanic
+    /// </summary>
     public class CheckSystem
     {
         public string TitleText;

@@ -68,6 +68,13 @@ namespace UI.DicePanel
 
         }
 
+        /// <summary>
+        /// Should be called to start dice check
+        /// </summary>
+        /// <param name="titleText"></param>
+        /// <param name="subTitleText"></param>
+        /// <param name="additiveNumbers"></param>
+        /// <param name="difficulty"></param>
         public void Init(string titleText, string subTitleText, List<int> additiveNumbers, int difficulty)
         {
             AddonElementsInit();
@@ -212,6 +219,8 @@ namespace UI.DicePanel
                 }
                 Init("Investigation", "Dexterity check", testList, Random.Range(1, 21));
             }
+            if (Input.GetKeyDown(KeyCode.Escape))
+                Application.Quit();
         }
         //-----------------------------------------
     }

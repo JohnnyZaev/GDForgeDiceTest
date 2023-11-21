@@ -2,18 +2,21 @@ using UnityEngine;
 
 namespace UI.DicePanel
 {
+    /// <summary>
+    /// Simple dice logic implementation
+    /// </summary>
     public class Dice
     {
-        private readonly int Sides;
+        private readonly int _sides;
 
         public Dice(int sides)
         {
-            Sides = sides;
+            _sides = sides;
         }
 
         public int Roll()
         {
-            return Random.Range(0, Sides);
+            return Random.Range(0, _sides);
         }
     }
 }
