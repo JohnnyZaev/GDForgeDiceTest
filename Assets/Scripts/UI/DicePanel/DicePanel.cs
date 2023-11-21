@@ -11,6 +11,7 @@ namespace UI.DicePanel
     // Panel controls all UI elements and actively communicate with CheckSystem
     public class DicePanel : MonoBehaviour
     {
+        [Header("UIObjects")] 
         [SerializeField] private Canvas dicePanelCanvas;
         
         [SerializeField] private TMP_Text titlePanel;
@@ -21,10 +22,24 @@ namespace UI.DicePanel
 
         [SerializeField] private Button diceButton;
         [SerializeField] private Button continueButton;
+        
         [SerializeField] private GameObject finalDice;
         [SerializeField] private GameObject addonsPanel;
 
+        [Header("Sprites")]
         [SerializeField] private Sprite[] diceSprites;
+
+        [Header("DesignersChoice")] 
+        [SerializeField] private float resultTextStarterSize = 0.5f;
+        [SerializeField] private float boardRadius = 150f;
+        [SerializeField] private float diceRollDuration = 2f;
+        [SerializeField] private int diceRollVibrato = 5;
+        [SerializeField] private float elementsAnimationDuration = 0.5f;
+        [SerializeField] private float diceNumberUpdateAnimationDuration = 0.5f;
+        [SerializeField] private int diceNumberUpdateAnimationVibrato = 2;
+        [SerializeField] private float resultCheckTextAnimationDuration = 1f;
+        [SerializeField] private string successText = "SUCCESS";
+        [SerializeField] private string failureText = "FAILURE";
         
         private readonly List<GameObject> _addonElementsPool = new ();
         private int _addonElementsIndex;
@@ -63,13 +78,13 @@ namespace UI.DicePanel
             clickText.gameObject.SetActive(true);
             finalDice.gameObject.SetActive(false);
             resultText.gameObject.SetActive(false);
-            resultText.transform.localScale = Vector3.one * 0.5f;
+            resultText.transform.localScale = Vector3.one * resultTextStarterSize;
             
             dicePanelCanvas.gameObject.SetActive(true);
             
             continueButton.onClick.AddListener(OnContinueButtonClicked);
 
-            for (int i = 0; i < additiveNumbers.Count; i++)
+            for (var i = 0; i < additiveNumbers.Count; i++)
             {
                 _addonElementsPool[i].gameObject.SetActive(true);
                 _addonElementsPool[i].GetComponentInChildren<TMP_Text>().text = additiveNumbers[i].ToString();
@@ -115,14 +130,13 @@ namespace UI.DicePanel
                 yRandom = Random.Range(-1, 2);
             } while (xRandom == 0 && yRandom == 0);
 
-            finalDice.transform.DOPunchPosition(new Vector3(150 * xRandom, 150 * yRandom, 0), 2f, 5)
+            finalDice.transform.DOPunchPosition(new Vector3(boardRadius * xRandom, boardRadius * yRandom, 0), diceRollDuration, diceRollVibrato)
                 .SetEase(Ease.InOutBounce).onComplete = OnEndRoll;
         }
 
         private void OnEndRoll()
         {
             UpdateDice();
-            Debug.Log(_checkSystem.AdditiveNumbers.Count);
             finalDice.gameObject.SetActive(false);
             clickText.gameObject.SetActive(false);
             UpgradesAnimation();
@@ -141,15 +155,12 @@ namespace UI.DicePanel
             _addonElementsIndex++;
             if (_checkSystem.AdditiveNumbers.Count > _addonElementsIndex + 1)
             {
-                _addonElementsPool[_addonElementsIndex].transform.DOScale(Vector3.zero, 0.5f).SetEase(Ease.InOutBounce).onComplete =
+                _addonElementsPool[_addonElementsIndex].transform.DOScale(Vector3.zero, elementsAnimationDuration).SetEase(Ease.InOutBack).onComplete =
                     DisableElements;
-                Debug.Log(_addonElementsIndex);
             }
             else
             {
-                Debug.Log(_addonElementsIndex);
-                _addonElementsPool[_addonElementsIndex].transform.DOScale(Vector3.zero, 0.5f).SetEase(Ease.InOutBounce).onComplete = Disable;
-                
+                _addonElementsPool[_addonElementsIndex].transform.DOScale(Vector3.zero, elementsAnimationDuration).SetEase(Ease.InOutBack).onComplete = Disable;
             }
 
             _checkSystem.RollResult += _checkSystem.AdditiveNumbers[_addonElementsIndex];
@@ -161,7 +172,29 @@ namespace UI.DicePanel
             diceButton.interactable = false;
             diceButton.gameObject.GetComponent<Image>().sprite = diceSprites[_checkSystem.RollResult];
             diceButton.gameObject.SetActive(true);
-            diceButton.transform.DOPunchScale(Vector3.one, 0.5f, 2);
+            diceButton.transform.DOPunchScale(Vector3.one, diceNumberUpdateAnimationDuration, diceNumberUpdateAnimationVibrato);
+        }
+
+        private void RemoveListeners()
+        {
+            diceButton.onClick.RemoveListener(Roll);
+            continueButton.onClick.RemoveListener(OnContinueButtonClicked);
+        }
+
+        private void OnContinueButtonClicked()
+        {
+            dicePanelCanvas.gameObject.SetActive(false);
+            _checkSystem.FinishCheck();
+            RemoveListeners();
+        }
+
+        private void Disable()
+        {
+            resultText.text = _checkSystem.CheckResult ? successText : failureText;
+            resultText.color = _checkSystem.CheckResult ? Color.green : Color.red;
+            resultText.gameObject.SetActive(true);
+            resultText.transform.DOScale(Vector3.one, resultCheckTextAnimationDuration).SetEase(Ease.InOutBack);
+            continueButton.gameObject.SetActive(true);
         }
 
         // TODO : FOR TESTING ONLY
@@ -181,28 +214,5 @@ namespace UI.DicePanel
             }
         }
         //-----------------------------------------
-
-        private void RemoveListeners()
-        {
-            diceButton.onClick.RemoveListener(Roll);
-            continueButton.onClick.RemoveListener(OnContinueButtonClicked);
-        }
-
-        private void OnContinueButtonClicked()
-        {
-            dicePanelCanvas.gameObject.SetActive(false);
-            _checkSystem.FinishCheck();
-        }
-
-        private void Disable()
-        {
-            resultText.text = _checkSystem.CheckResult ? "SUCCESS" : "FAILURE";
-            resultText.color = _checkSystem.CheckResult ? Color.green : Color.red;
-            resultText.gameObject.SetActive(true);
-            resultText.transform.DOScale(Vector3.one, 1f).SetEase(Ease.InOutBack);
-            continueButton.gameObject.SetActive(true);
-            RemoveListeners();
-        }
-
     }
 }
